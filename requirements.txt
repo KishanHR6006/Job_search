@@ -1,0 +1,25 @@
+# Core Dependencies
+anthropic==0.40.0
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.9.0
+
+# Browser Automation
+playwright==1.48.0
+playwright-stealth==1.0.6
+
+# Data Processing
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Async Support
+aiofiles==24.1.0
+websockets==13.1
+
+# PDF Generation
+reportlab==4.2.5
+PyPDF2==3.0.1
+
+# Utilities
+python-dotenv==1.0.1
+python-multipart==0.0.12
