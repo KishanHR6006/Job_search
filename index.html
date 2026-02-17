@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamlineRemote - AI Job Search</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0a0f;
+    --paper: #f0ede8;
+    --cream: #faf8f4;
+    --accent: #ff4d1c;
+    --accent2: #1c64ff;
+    --gold: #e8c547;
+    --success: #1db954;
+    --warn: #ff9500;
+    --glass: rgba(250,248,244,0.85);
+    --border: rgba(10,10,15,0.1);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Cabinet Grotesk', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      radial-gradient(circle at 20% 20%, rgba(255,77,28,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(28,100,255,0.06) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230a0a0f' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── HEADER ─── */
+  .header {
+    position: relative;
+    z-index: 10;
+    padding: 32px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--cream);
+  }
+
+  .logo {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .header-badge {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 8px 18px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* ─── MAIN LAYOUT ─── */
+  .layout {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    min-height: calc(100vh - 81px);
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--cream);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  .widget {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    background: white;
+  }
+
+  .widget-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 20px;
+  }
+
+  /* ─── PULSE ─── */
+  .pulse-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .pulse-orb {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pulse-orb.active { background: #e8f9ee; }
+  .pulse-orb.cooldown { background: #fff4e5; }
+  .pulse-orb.waiting { background: #fff0ee; }
+
+  .pulse-orb::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    animation: orb-pulse 2s ease-in-out infinite;
+  }
+
+  .pulse-orb.active::after { background: rgba(29,185,84,0.2); }
+  .pulse-orb.cooldown::after { background: rgba(255,149,0,0.2); }
+  .pulse-orb.waiting::after { background: rgba(255,77,28,0.2); }
+
+  @keyframes orb-pulse {
+    0%,100% { opacity: 0; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  .pulse-info h3 {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .pulse-info p {
+    font-size: 13px;
+    color: #888;
+    margin-top: 2px;
+  }
+
+  .health-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .health-label { font-size: 13px; color: #888; }
+  .health-num { font-size: 13px; font-weight: 700; }
+
+  .health-track {
+    height: 6px;
+    background: #f0ede8;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .health-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .batch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .batch-dot {
+    height: 8px;
+    border-radius: 4px;
+    background: #f0ede8;
+    transition: all 0.3s;
+  }
+
+  .batch-dot.filled { background: var(--accent2); }
+
+  /* ─── STATS ─── */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0ede8;
+  }
+
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { font-size: 14px; color: #666; }
+
+  .stat-val {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  /* ─── MAIN CONTENT ─── */
+  .main {
+    padding: 40px 48px;
+    overflow-y: auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .section-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+
+  .section-count {
+    font-size: 14px;
+    color: #888;
+  }
+
+  /* ─── JOB CARDS ─── */
+  .jobs-grid {
+    display: grid;
+    gap: 16px;
+  }
+
+  .job-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    align-items: start;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .job-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--accent2);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 0.25s;
+  }
+
+  .job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(10,10,15,0.08);
+    border-color: rgba(10,10,15,0.15);
+  }
+
+  .job-card:hover::before { transform: scaleY(1); }
+
+  .job-company {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent2);
+    margin-bottom: 6px;
+  }
+
+  .job-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    margin-bottom: 8px;
+  }
+
+  .job-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 16px;
+  }
+
+  .job-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tag {
+    background: #f0ede8;
+    color: #555;
+    padding: 5px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .job-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .match-score {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--success);
+    text-align: center;
+    line-height: 1;
+  }
+
+  .match-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #888;
+    text-align: center;
+    margin-top: 2px;
+    margin-bottom: 12px;
+  }
+
+  .btn-apply {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-apply:hover {
+    background: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .btn-skip {
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: #aaa;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s;
+    font-family: 'Cabinet Grotesk', sans-serif;
+  }
+
+  .btn-skip:hover { color: var(--accent); }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.6);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--cream);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 860px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(20px);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 32px 80px rgba(10,10,15,0.25);
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-header {
+    padding: 28px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+  }
+
+  .modal-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #f0ede8;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+  }
+
+  .modal-close:hover { background: #e0ddd8; color: var(--ink); }
+
+  .modal-body {
+    padding: 32px;
+    overflow-y: auto;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+
+  .modal-section h4 {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    letter-spacing: -0.2px;
+  }
+
+  .resume-bullets {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .resume-bullets li {
+    padding: 12px 16px;
+    background: white;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+    border-left: 3px solid var(--accent2);
+    color: #333;
+  }
+
+  .score-display {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .score-big {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--success);
+    line-height: 1;
+  }
+
+  .score-info h5 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .score-info p { font-size: 13px; color: #888; }
+
+  .cover-letter-box {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #444;
+    border-left: 3px solid var(--gold);
+  }
+
+  .modal-footer {
+    padding: 24px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    background: white;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border);
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #666;
+  }
+
+  .btn-ghost:hover { background: #f0ede8; }
+
+  .btn-danger {
+    background: #fff0ee;
+    border: 1px solid rgba(255,77,28,0.2);
+    color: var(--accent);
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-danger:hover { background: #ffe5df; }
+
+  .btn-confirm {
+    background: var(--success);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-confirm:hover {
+    background: #17a346;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(29,185,84,0.3);
+  }
+
+  /* ─── TAILORING OVERLAY ─── */
+  .tailoring-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.85);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .tailoring-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .tailoring-card {
+    background: white;
+    border-radius: 24px;
+    padding: 48px;
+    width: 480px;
+    text-align: center;
+  }
+
+  .tailoring-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+    animation: spin-slow 3s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .tailoring-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+
+  .tailoring-subtitle {
+    font-size: 15px;
+    color: #888;
+    margin-bottom: 32px;
+  }
+
+  .steps-list {
+    list-style: none;
+    text-align: left;
+    margin-bottom: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #aaa;
+    transition: all 0.3s;
+  }
+
+  .step-item.active { color: var(--ink); font-weight: 600; }
+  .step-item.done { color: var(--success); }
+
+  .step-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #f0ede8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+
+  .step-item.active .step-icon { background: var(--ink); color: white; }
+  .step-item.done .step-icon { background: var(--success); color: white; }
+
+  .tail-progress {
+    height: 6px;
+    background: #f0ede8;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .tail-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--success));
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 300;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 360px;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--accent); }
+
+  /* ─── BATCH ALERT ─── */
+  .batch-alert {
+    background: linear-gradient(135deg, #fff4e5, #fff8ef);
+    border: 1px solid rgba(255,149,0,0.3);
+    border-radius: 14px;
+    padding: 20px;
+    display: none;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .batch-alert.show { display: flex; }
+  .batch-alert-icon { font-size: 24px; flex-shrink: 0; }
+
+  .batch-alert h4 {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .batch-alert p { font-size: 13px; color: #666; margin-bottom: 12px; }
+
+  .btn-continue {
+    background: var(--warn);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-continue:hover { background: #e08600; }
+
+  /* ─── APPLIED BADGE ─── */
+  .applied-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: #e8f9ee;
+    color: var(--success);
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: none;
+  }
+
+  .job-card.applied .applied-badge { display: block; }
+  .job-card.applied { opacity: 0.7; }
+
+  @media (max-width: 1024px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+    .modal-body { grid-template-columns: 1fr; }
+    .header { padding: 20px 24px; }
+    .main { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    StreamlineRemote
+  </div>
+  <div class="header-badge">AI Powered</div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- Pulse Widget -->
+    <div class="widget">
+      <div class="widget-title">🫀 Human Pulse</div>
+      <div class="pulse-status">
+        <div class="pulse-orb active" id="pulseOrb">✓</div>
+        <div class="pulse-info">
+          <h3 id="pulseStatusText">ACTIVE</h3>
+          <p id="pulseSubtext">Ready to apply</p>
+        </div>
+      </div>
+
+      <div class="health-row">
+        <span class="health-label">Health Score</span>
+        <span class="health-num" id="healthNum">100/100</span>
+      </div>
+      <div class="health-track">
+        <div class="health-fill" id="healthFill" style="width:100%; background: var(--success);"></div>
+      </div>
+
+      <div class="widget-title" style="margin-bottom:10px;">Batch Progress</div>
+      <div class="batch-grid">
+        <div class="batch-dot" id="bd1"></div>
+        <div class="batch-dot" id="bd2"></div>
+        <div class="batch-dot" id="bd3"></div>
+      </div>
+      <div style="font-size:12px; color:#aaa; margin-top:8px;" id="batchLabel">0 of 3 in this batch</div>
+    </div>
+
+    <!-- Batch Alert -->
+    <div class="batch-alert" id="batchAlert">
+      <div class="batch-alert-icon">⏸️</div>
+      <div>
+        <h4>Batch Limit Reached</h4>
+        <p>3 applications submitted. 20-minute cooldown prevents bot detection.</p>
+        <button class="btn-continue" onclick="resetBatch()">Continue Next Batch</button>
+      </div>
+    </div>
+
+    <!-- Stats Widget -->
+    <div class="widget">
+      <div class="widget-title">📊 Session Stats</div>
+      <div class="stat-row">
+        <span class="stat-label">Applications</span>
+        <span class="stat-val" id="statApps">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Avg Alignment</span>
+        <span class="stat-val" id="statScore">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Success Rate</span>
+        <span class="stat-val" id="statRate">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Health Score</span>
+        <span class="stat-val" id="statHealth">100</span>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+    <div class="section-header">
+      <h2 class="section-title">Open Opportunities</h2>
+      <span class="section-count" id="jobCount">4 jobs</span>
+    </div>
+
+    <div class="jobs-grid" id="jobsGrid">
+      <!-- Jobs injected by JS -->
+    </div>
+  </main>
+
+</div>
+
+<!-- TAILORING OVERLAY -->
+<div class="tailoring-overlay" id="tailoringOverlay">
+  <div class="tailoring-card">
+    <div class="tailoring-icon">⚙️</div>
+    <h3 class="tailoring-title">Tailoring Resume</h3>
+    <p class="tailoring-subtitle" id="tailoringCompany">Analyzing job requirements...</p>
+    <ul class="steps-list" id="stepsList">
+      <li class="step-item" data-step="1"><div class="step-icon">1</div> Analyzing Job Description</li>
+      <li class="step-item" data-step="2"><div class="step-icon">2</div> Mapping Skills to Requirements</li>
+      <li class="step-item" data-step="3"><div class="step-icon">3</div> Rephrasing Experience Bullets</li>
+      <li class="step-item" data-step="4"><div class="step-icon">4</div> Generating Cover Letter</li>
+      <li class="step-item" data-step="5"><div class="step-icon">5</div> Creating Tailored Resume</li>
+    </ul>
+    <div class="tail-progress">
+      <div class="tail-fill" id="tailFill" style="width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- REVIEW MODAL -->
+<div class="modal-overlay" id="reviewModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalTitle">Review Application</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <h4>Tailored Resume Highlights</h4>
+        <ul class="resume-bullets" id="resumeBullets"></ul>
+      </div>
+      <div class="modal-section">
+        <div class="score-display">
+          <div>
+            <div class="score-big" id="modalScore">87%</div>
+            <div style="font-size:12px; color:#888; margin-top:4px; text-transform:uppercase; letter-spacing:1px;">JD Alignment</div>
+          </div>
+          <div class="score-info">
+            <h5>Strong Match</h5>
+            <p>Key skills aligned<br>with requirements</p>
+          </div>
+        </div>
+        <h4>Generated Cover Letter</h4>
+        <div class="cover-letter-box" id="coverLetterBox"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal()">Edit</button>
+      <button class="btn-danger" onclick="closeModal()">Skip Job</button>
+      <button class="btn-confirm" onclick="submitApplication()">✓ Approve & Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✓</span>
+  <span id="toastMsg">Application submitted!</span>
+</div>
+
+<script>
+  // ─── DATA ───
+  const jobs = [
+    {
+      id: 1,
+      company: 'RazorpayX',
+      title: 'Senior Product Specialist',
+      location: '📍 Bangalore',
+      type: '🏢 Hybrid',
+      tags: ['Product Management', 'API Integration', 'Merchant Onboarding', 'GST Systems'],
+      score: 94,
+      bullets: [
+        'Led merchant onboarding for RazorpayX Payroll platform, driving 45% increase in enterprise adoption across 200+ accounts',
+        'Architected GST ITC Checker integration reducing compliance errors by 60% through automated validation',
+        'Resolved 200+ DSRs across enterprise accounts including Inwisement Technologies and Secninjaz'
+      ],
+      coverLetter: "I noticed your opening for Senior Product Specialist and was immediately drawn to the focus on enterprise payroll solutions. At RazorpayX, I've directly managed merchant onboarding that increased adoption by 45% while building GST integrations that reduced compliance errors by 60%. I'd love to discuss how my deep product and technical knowledge could contribute to your team's goals."
+    },
+    {
+      id: 2,
+      company: 'Stripe',
+      title: 'Solutions Engineer',
+      location: '📍 Remote',
+      type: '💻 Remote',
+      tags: ['Python', 'API Design', 'Fintech', 'Client Solutions'],
+      score: 88,
+      bullets: [
+        'Built scalable API integrations for enterprise fintech clients, maintaining sub-100ms response times across 1M+ daily transactions',
+        'Developed comprehensive technical documentation and demo scripts for enterprise client onboarding',
+        'Created automated compliance monitoring systems reducing manual review time by 70%'
+      ],
+      coverLetter: "Stripe's role caught my attention because of its focus on developer-first API solutions in fintech. I've spent the last few years building exactly this - integrating payment and compliance APIs for enterprise clients with measurable impact. My experience creating technical demos and resolving complex integration issues would translate directly to supporting Stripe's enterprise customers."
+    },
+    {
+      id: 3,
+      company: 'Anthropic',
+      title: 'Product Operations Manager',
+      location: '📍 San Francisco',
+      type: '🏢 Onsite',
+      tags: ['AI Products', 'Operations', 'Documentation', 'Cross-functional'],
+      score: 82,
+      bullets: [
+        'Managed cross-functional product operations for AI-powered payroll automation, coordinating between engineering, sales and compliance teams',
+        'Created comprehensive implementation guides and operational playbooks adopted across 50+ merchant accounts',
+        'Tracked and optimized product adoption metrics, identifying key friction points in onboarding workflows'
+      ],
+      coverLetter: "Anthropic's mission to build reliable, interpretable AI products resonates deeply with my work building AI-powered automation tools. My background managing product operations for technical financial products - including creating documentation systems and optimizing adoption workflows - would be directly applicable to supporting Anthropic's growing product portfolio."
+    },
+    {
+      id: 4,
+      company: 'Razorpay',
+      title: 'Technical Account Manager',
+      location: '📍 Bangalore',
+      type: '🏢 Hybrid',
+      tags: ['Tally Integration', 'Technical Support', 'Account Management', 'Fintech'],
+      score: 91,
+      bullets: [
+        'Managed technical integrations for Tally ERP systems across enterprise merchant accounts, reducing integration time by 50%',
+        'Served as primary technical liaison for key accounts resolving complex system integration issues',
+        'Developed and maintained DSR tracking system across multiple client accounts with various account managers'
+      ],
+      coverLetter: "Your Technical Account Manager role aligns perfectly with what I've been doing at RazorpayX - managing complex Tally integrations and serving as the technical bridge between product teams and enterprise clients. I've directly resolved Tally integration issues for clients like Inwisement Technologies and TERRAMOVE VENTURE, and would bring that hands-on expertise to your team."
+    }
+  ];
+
+  // ─── STATE ───
+  let state = {
+    batchCount: 0,
+    health: 100,
+    totalApps: 0,
+    scores: [],
+    currentJobId: null,
+    applied: new Set()
+  };
+
+  // ─── RENDER JOBS ───
+  function renderJobs() {
+    const grid = document.getElementById('jobsGrid');
+    grid.innerHTML = jobs.map(job => `
+      <div class="job-card ${state.applied.has(job.id) ? 'applied' : ''}" id="job-${job.id}">
+        <div class="applied-badge">✓ Applied</div>
+        <div>
+          <div class="job-company">${job.company}</div>
+          <div class="job-title">${job.title}</div>
+          <div class="job-meta">
+            <span>${job.location}</span>
+            <span>${job.type}</span>
+          </div>
+          <div class="tags">
+            ${job.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+          </div>
+        </div>
+        <div class="job-actions">
+          <div>
+            <div class="match-score">${job.score}%</div>
+            <div class="match-label">Match</div>
+          </div>
+          ${state.applied.has(job.id) 
+            ? `<button class="btn-apply" disabled style="opacity:0.5; cursor:not-allowed;">Applied</button>`
+            : `<button class="btn-apply" onclick="startApply(${job.id})">Review & Apply</button>
+               <button class="btn-skip" onclick="skipJob(${job.id})">Skip</button>`
+          }
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ─── START APPLY ───
+  async function startApply(jobId) {
+    if (state.batchCount >= 3) {
+      document.getElementById('batchAlert').classList.add('show');
+      showToast('Batch limit reached! Approve next batch to continue.', 'error');
+      return;
+    }
+
+    state.currentJobId = jobId;
+    const job = jobs.find(j => j.id === jobId);
+
+    // Show tailoring overlay
+    const overlay = document.getElementById('tailoringOverlay');
+    document.getElementById('tailoringCompany').textContent = `Tailoring for ${job.company} - ${job.title}`;
+    overlay.classList.add('open');
+
+    // Animate steps
+    const steps = document.querySelectorAll('.step-item');
+    const fill = document.getElementById('tailFill');
+
+    for (let i = 0; i < steps.length; i++) {
+      steps[i].classList.add('active');
+      fill.style.width = `${((i + 1) / steps.length) * 100}%`;
+      await sleep(700);
+      steps[i].classList.remove('active');
+      steps[i].classList.add('done');
+      steps[i].querySelector('.step-icon').textContent = '✓';
+    }
+
+    await sleep(300);
+    overlay.classList.remove('open');
+
+    // Reset steps
+    steps.forEach(s => {
+      s.classList.remove('done', 'active');
+      s.querySelector('.step-icon').textContent = s.dataset.step;
+    });
+    fill.style.width = '0%';
+
+    // Show review modal
+    openModal(job);
+  }
+
+  // ─── MODAL ───
+  function openModal(job) {
+    document.getElementById('modalTitle').textContent = `${job.company} — ${job.title}`;
+    document.getElementById('modalScore').textContent = `${job.score}%`;
+    document.getElementById('resumeBullets').innerHTML = job.bullets
+      .map(b => `<li>${b}</li>`).join('');
+    document.getElementById('coverLetterBox').textContent = job.coverLetter;
+    document.getElementById('reviewModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('reviewModal').classList.remove('open');
+    state.currentJobId = null;
+  }
+
+  // ─── SUBMIT ───
+  function submitApplication() {
+    const job = jobs.find(j => j.id === state.currentJobId);
+    closeModal();
+
+    state.applied.add(state.currentJobId);
+    state.batchCount++;
+    state.totalApps++;
+    state.scores.push(job.score);
+    state.health = Math.max(60, state.health - Math.floor(Math.random() * 5 + 2));
+
+    updateUI();
+    renderJobs();
+    showToast(`✓ Applied to ${job.title} at ${job.company}!`, 'success');
+
+    if (state.batchCount >= 3) {
+      setTimeout(() => {
+        document.getElementById('batchAlert').classList.add('show');
+        updatePulse('waiting');
+      }, 1000);
+    }
+  }
+
+  // ─── SKIP JOB ───
+  function skipJob(jobId) {
+    showToast('Job skipped.', '');
+  }
+
+  // ─── RESET BATCH ───
+  function resetBatch() {
+    state.batchCount = 0;
+    document.getElementById('batchAlert').classList.remove('show');
+    updatePulse('active');
+    showToast('Next batch approved! Ready to continue.', 'success');
+    updateUI();
+  }
+
+  // ─── UPDATE PULSE ───
+  function updatePulse(status) {
+    const orb = document.getElementById('pulseOrb');
+    const text = document.getElementById('pulseStatusText');
+    const sub = document.getElementById('pulseSubtext');
+
+    orb.className = `pulse-orb ${status}`;
+
+    if (status === 'active') {
+      orb.textContent = '✓';
+      text.textContent = 'ACTIVE';
+      sub.textContent = 'Ready to apply';
+    } else if (status === 'cooldown') {
+      orb.textContent = '⏸';
+      text.textContent = 'COOLDOWN';
+      sub.textContent = 'Waiting 20 minutes';
+    } else {
+      orb.textContent = '✋';
+      text.textContent = 'WAITING';
+      sub.textContent = 'Batch limit reached';
+    }
+  }
+
+  // ─── UPDATE UI ───
+  function updateUI() {
+    // Health
+    const h = state.health;
+    document.getElementById('healthNum').textContent = `${h}/100`;
+    document.getElementById('statHealth').textContent = h;
+    const fill = document.getElementById('healthFill');
+    fill.style.width = `${h}%`;
+    fill.style.background = h > 70 ? 'var(--success)' : h > 40 ? 'var(--warn)' : 'var(--accent)';
+
+    // Batch dots
+    for (let i = 1; i <= 3; i++) {
+      const dot = document.getElementById(`bd${i}`);
+      dot.className = `batch-dot ${i <= state.batchCount ? 'filled' : ''}`;
+    }
+    document.getElementById('batchLabel').textContent = 
+      `${state.batchCount} of 3 in this batch`;
+
+    // Stats
+    document.getElementById('statApps').textContent = state.totalApps;
+    if (state.scores.length > 0) {
+      const avg = Math.round(state.scores.reduce((a,b) => a+b, 0) / state.scores.length);
+      document.getElementById('statScore').textContent = `${avg}%`;
+      document.getElementById('statRate').textContent = '100%';
+    }
+  }
+
+  // ─── TOAST ───
+  function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    toast.className = `toast ${type} show`;
+    setTimeout(() => toast.classList.remove('show'), 3500);
+  }
+
+  // ─── UTILS ───
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ─── INIT ───
+  renderJobs();
+  updateUI();
+</script>
+</body>
+</html>
