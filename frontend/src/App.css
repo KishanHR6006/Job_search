@@ -1,378 +1,780 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-// Human Pulse Indicator Component
-const HumanPulseIndicator = ({ status, batchProgress, healthScore, cooldownRemaining }) => {
-  const getStatusColor = () => {
-    switch(status) {
-      case 'active': return '#34C759';
-      case 'cooldown': return '#FF9500';
-      case 'waiting_approval': return '#FF3B30';
-      default: return '#8E8E93';
-    }
-  };
+/* ── RESET & VARS ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-  const getStatusIcon = () => {
-    switch(status) {
-      case 'active': return '✓';
-      case 'cooldown': return '⏸';
-      case 'waiting_approval': return '✋';
-      default: return '●';
-    }
-  };
-
-  return (
-    <div className="pulse-container">
-      <div className="pulse-header">
-        <div className="pulse-icon" style={{ backgroundColor: getStatusColor() }}>
-          <span>{getStatusIcon()}</span>
-        </div>
-        <div className="pulse-info">
-          <h3 className="pulse-title">Human Pulse</h3>
-          <p className="pulse-status">{status.replace('_', ' ').toUpperCase()}</p>
-        </div>
-      </div>
-      
-      <div className="pulse-metrics">
-        <div className="metric">
-          <span className="metric-label">Batch</span>
-          <span className="metric-value">{batchProgress}</span>
-        </div>
-        <div className="metric">
-          <span className="metric-label">Health</span>
-          <span className="metric-value">{healthScore}/100</span>
-        </div>
-        {cooldownRemaining > 0 && (
-          <div className="metric">
-            <span className="metric-label">Cooldown</span>
-            <span className="metric-value">{Math.floor(cooldownRemaining / 60)}m {cooldownRemaining % 60}s</span>
-          </div>
-        )}
-      </div>
-
-      {/* Health Score Visual */}
-      <div className="health-bar">
-        <div 
-          className="health-fill" 
-          style={{ 
-            width: `${healthScore}%`,
-            backgroundColor: healthScore > 70 ? '#34C759' : healthScore > 40 ? '#FF9500' : '#FF3B30'
-          }}
-        />
-      </div>
-    </div>
-  );
-};
-
-// Tailoring Progress Component
-const TailoringProgress = ({ progress, currentStep, totalSteps }) => {
-  const steps = [
-    'Analyzing JD',
-    'Mapping Skills',
-    'Rephrasing Bullets',
-    'Generating Cover Letter',
-    'Creating PDF'
-  ];
-
-  return (
-    <div className="tailoring-progress">
-      <h4>Tailoring Resume</h4>
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-      <p className="progress-text">{steps[currentStep - 1]} ({currentStep}/{totalSteps})</p>
-    </div>
-  );
-};
-
-// Review Panel Component
-const ReviewPanel = ({ resume, coverLetter, onApprove, onEdit, onReject }) => {
-  return (
-    <div className="review-panel">
-      <div className="review-header">
-        <h3>Review Tailored Application</h3>
-        <button className="close-btn" onClick={onReject}>✕</button>
-      </div>
-
-      <div className="review-content">
-        {/* Resume Preview */}
-        <div className="resume-section">
-          <h4>Tailored Resume Highlights</h4>
-          <div className="resume-bullets">
-            {resume.tailored_experience?.slice(0, 1).map((exp, idx) => (
-              <div key={idx} className="experience-block">
-                <h5>{exp.company} - {exp.title}</h5>
-                <ul>
-                  {exp.bullets.slice(0, 3).map((bullet, bIdx) => (
-                    <li key={bIdx}>{bullet}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          {/* Alignment Score */}
-          <div className="alignment-score">
-            <span className="score-label">JD Alignment</span>
-            <span className="score-value">{resume.metadata?.alignment_score || 85}%</span>
-          </div>
-        </div>
-
-        {/* Cover Letter Preview */}
-        <div className="cover-letter-section">
-          <h4>Generated Cover Letter</h4>
-          <div className="cover-letter-preview">
-            {coverLetter}
-          </div>
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="review-actions">
-        <button className="btn-secondary" onClick={onEdit}>
-          Edit
-        </button>
-        <button className="btn-reject" onClick={onReject}>
-          Skip
-        </button>
-        <button className="btn-primary" onClick={onApprove}>
-          Approve & Submit
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Job Card Component
-const JobCard = ({ job, onApply, onSkip }) => {
-  return (
-    <div className="job-card">
-      <div className="job-header">
-        <h3 className="job-title">{job.title}</h3>
-        <p className="company-name">{job.company}</p>
-      </div>
-      
-      <div className="job-meta">
-        <span className="location">{job.location || 'Remote'}</span>
-        <span className="posted">{job.posted_date || 'Recently'}</span>
-      </div>
-
-      {job.key_requirements && (
-        <div className="requirements">
-          {job.key_requirements.slice(0, 4).map((req, idx) => (
-            <span key={idx} className="requirement-tag">{req}</span>
-          ))}
-        </div>
-      )}
-
-      <div className="job-actions">
-        <button className="btn-text" onClick={onSkip}>Skip</button>
-        <button className="btn-primary" onClick={onApply}>Review & Apply</button>
-      </div>
-    </div>
-  );
-};
-
-// Main App Component
-function App() {
-  const [jobs, setJobs] = useState([]);
-  const [pulseStatus, setPulseStatus] = useState({
-    status: 'active',
-    batchProgress: '0/3',
-    healthScore: 100,
-    cooldownRemaining: 0
-  });
-  const [isTailoring, setIsTailoring] = useState(false);
-  const [tailoringProgress, setTailoringProgress] = useState({ progress: 0, currentStep: 0, totalSteps: 5 });
-  const [showReview, setShowReview] = useState(false);
-  const [currentReview, setCurrentReview] = useState({ resume: {}, coverLetter: '' });
-  const [applicationStats, setApplicationStats] = useState({
-    total: 0,
-    thisWeek: 0,
-    responseRate: '0%',
-    interviewRate: '0%'
-  });
-
-  // Mock API calls
-  useEffect(() => {
-    // Load initial data
-    fetchJobs();
-    fetchPulseStatus();
-    fetchStats();
-
-    // Poll pulse status every 5 seconds
-    const interval = setInterval(fetchPulseStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchJobs = async () => {
-    // Mock job data
-    setJobs([
-      {
-        id: 1,
-        company: 'Anthropic',
-        title: 'Senior Backend Engineer',
-        location: 'Remote',
-        posted_date: '2 days ago',
-        key_requirements: ['Python', 'FastAPI', 'PostgreSQL', 'AWS'],
-        jd: 'Full JD text here...'
-      },
-      {
-        id: 2,
-        company: 'OpenAI',
-        title: 'ML Infrastructure Engineer',
-        location: 'San Francisco, CA',
-        posted_date: '1 week ago',
-        key_requirements: ['Python', 'Kubernetes', 'TensorFlow', 'Distributed Systems'],
-        jd: 'Full JD text here...'
-      }
-    ]);
-  };
-
-  const fetchPulseStatus = async () => {
-    // Mock API call
-    // const response = await fetch('/api/pulse-status');
-    // const data = await response.json();
-    // setPulseStatus(data);
-  };
-
-  const fetchStats = async () => {
-    // Mock stats
-    setApplicationStats({
-      total: 24,
-      thisWeek: 8,
-      responseRate: '12.5%',
-      interviewRate: '8.3%'
-    });
-  };
-
-  const handleApply = async (job) => {
-    // Start tailoring process
-    setIsTailoring(true);
-    setTailoringProgress({ progress: 0, currentStep: 1, totalSteps: 5 });
-
-    // Simulate tailoring steps
-    for (let step = 1; step <= 5; step++) {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setTailoringProgress({
-        progress: (step / 5) * 100,
-        currentStep: step,
-        totalSteps: 5
-      });
-    }
-
-    // Show review panel
-    setIsTailoring(false);
-    setCurrentReview({
-      resume: {
-        tailored_experience: [
-          {
-            company: 'Previous Company',
-            title: 'Software Engineer',
-            bullets: [
-              'Designed and implemented RESTful APIs serving 1M+ requests/day using Python and FastAPI',
-              'Reduced database query latency by 60% through PostgreSQL optimization and indexing strategies',
-              'Led migration to AWS infrastructure, reducing hosting costs by 40%'
-            ]
-          }
-        ],
-        metadata: {
-          alignment_score: 87,
-          company: job.company
-        }
-      },
-      coverLetter: `I noticed ${job.company}'s opening for ${job.title} and was particularly drawn to your focus on building scalable backend systems. At my current role, I've built APIs that handle over 1 million requests daily while maintaining sub-100ms response times. I'd love to discuss how my experience with Python and FastAPI could contribute to your team's goals.`
-    });
-    setShowReview(true);
-  };
-
-  const handleApprove = async () => {
-    // Submit application
-    setShowReview(false);
-    // Call backend API to submit
-    // await fetch('/api/submit-application', { method: 'POST', body: ... });
-    
-    // Refresh data
-    fetchPulseStatus();
-    fetchStats();
-  };
-
-  return (
-    <div className="app">
-      {/* Header */}
-      <header className="header">
-        <h1 className="app-title">StreamlineRemote</h1>
-        <p className="app-subtitle">AI-Powered Job Search Automation</p>
-      </header>
-
-      {/* Dashboard */}
-      <div className="dashboard">
-        <div className="sidebar">
-          {/* Human Pulse Widget */}
-          <HumanPulseIndicator {...pulseStatus} />
-
-          {/* Stats */}
-          <div className="stats-card">
-            <h4>Application Stats</h4>
-            <div className="stat">
-              <span className="stat-label">Total Applications</span>
-              <span className="stat-value">{applicationStats.total}</span>
-            </div>
-            <div className="stat">
-              <span className="stat-label">This Week</span>
-              <span className="stat-value">{applicationStats.thisWeek}</span>
-            </div>
-            <div className="stat">
-              <span className="stat-label">Response Rate</span>
-              <span className="stat-value">{applicationStats.responseRate}</span>
-            </div>
-            <div className="stat">
-              <span className="stat-label">Interview Rate</span>
-              <span className="stat-value">{applicationStats.interviewRate}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="main-content">
-          {/* Tailoring Progress Overlay */}
-          {isTailoring && (
-            <div className="tailoring-overlay">
-              <TailoringProgress {...tailoringProgress} />
-            </div>
-          )}
-
-          {/* Review Panel */}
-          {showReview && (
-            <div className="review-overlay">
-              <ReviewPanel
-                resume={currentReview.resume}
-                coverLetter={currentReview.coverLetter}
-                onApprove={handleApprove}
-                onEdit={() => alert('Edit functionality coming soon!')}
-                onReject={() => setShowReview(false)}
-              />
-            </div>
-          )}
-
-          {/* Job List */}
-          <div className="jobs-container">
-            <h2 className="section-title">Available Opportunities</h2>
-            <div className="jobs-grid">
-              {jobs.map(job => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  onApply={() => handleApply(job)}
-                  onSkip={() => console.log('Skipped', job.id)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+:root {
+  --bg: #0B0E1A;
+  --surface: #111525;
+  --surface2: #161B2E;
+  --surface3: #1C2340;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --accent: #6C63FF;
+  --accent2: #00D084;
+  --warn: #FFB800;
+  --danger: #FF4757;
+  --text: #E8EAF6;
+  --text2: #8B90A7;
+  --text3: #5A5F7A;
+  --font: 'Plus Jakarta Sans', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-lg: 20px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 48px rgba(0,0,0,0.6);
+  --sidebar-w: 240px;
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
 }
 
-export default App;
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── LAYOUT ───────────────────────────────────────────────────────────────── */
+.app { display: flex; min-height: 100vh; }
+
+/* ── SIDEBAR ──────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 50;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.brand-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), #9C8BFF);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+/* ── NAV ──────────────────────────────────────────────────────────────────── */
+.nav { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; flex: 1; }
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: left;
+  position: relative;
+}
+
+.nav-tab:hover { background: var(--surface2); color: var(--text); }
+.nav-tab.active { background: rgba(108,99,255,0.15); color: var(--accent); }
+.nav-tab.active svg { stroke: var(--accent); }
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--surface3);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-family: var(--mono);
+}
+
+.nav-tab.active .nav-badge { background: rgba(108,99,255,0.2); color: var(--accent); }
+
+/* ── SIDEBAR BOTTOM ───────────────────────────────────────────────────────── */
+.sidebar-bottom { padding: 12px; margin-top: auto; border-top: 1px solid var(--border); }
+
+/* ── PULSE WIDGET ─────────────────────────────────────────────────────────── */
+.pulse-widget {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.pulse-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+
+.pulse-dot-wrap { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+.pulse-dot { width: 10px; height: 10px; border-radius: 50%; position: relative; z-index: 1; }
+
+.pulse-ring {
+  position: absolute; inset: 2px;
+  border-radius: 50%; border: 2px solid;
+  opacity: 0.3;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.4; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.pulse-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; }
+.pulse-val { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
+
+.pulse-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.pulse-stat { flex: 1; }
+.ps-label { display: block; font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+.ps-val { font-size: 14px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+
+.health-track { height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+.health-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+
+/* ── MAIN ─────────────────────────────────────────────────────────────────── */
+.main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; min-height: 100vh; }
+
+.page { max-width: 1200px; }
+
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+}
+
+.page-title { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+.page-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+.page-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ── SEARCH ───────────────────────────────────────────────────────────────── */
+.search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); padding: 8px 14px;
+  color: var(--text2); transition: border-color var(--transition);
+}
+
+.search-box:focus-within { border-color: var(--accent); color: var(--text); }
+
+.search-box input {
+  background: none; border: none; outline: none;
+  font-family: var(--font); font-size: 13px; color: var(--text);
+  width: 200px;
+}
+
+.search-box input::placeholder { color: var(--text3); }
+
+.filter-toggle {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border2);
+  color: var(--text2); border-radius: var(--radius-sm);
+  padding: 8px 14px; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all var(--transition); font-family: var(--font);
+}
+
+.filter-toggle:hover, .filter-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,0.08); }
+
+/* ── FILTERS PANEL ────────────────────────────────────────────────────────── */
+.filters-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+.fp-group { display: flex; flex-direction: column; gap: 8px; }
+
+.fp-label {
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.7px;
+  display: flex; align-items: center; gap: 5px;
+}
+
+.fp-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.fp-pill {
+  padding: 5px 12px; border-radius: 20px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all var(--transition); font-family: var(--font);
+}
+
+.fp-pill:hover { border-color: var(--accent); color: var(--accent); }
+.fp-pill.active { background: rgba(108,99,255,0.15); border-color: var(--accent); color: var(--accent); }
+
+.fp-range {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px;
+  background: var(--surface3); border-radius: 2px; outline: none; cursor: pointer;
+}
+
+.fp-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.2);
+}
+
+/* ── JOBS GRID ────────────────────────────────────────────────────────────── */
+.jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+/* ── JOB CARD ─────────────────────────────────────────────────────────────── */
+.job-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: all var(--transition);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.job-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  opacity: 0; transition: opacity var(--transition);
+}
+
+.job-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: var(--shadow); }
+.job-card:hover::before { opacity: 1; }
+
+.jc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.jc-header { display: flex; gap: 12px; align-items: flex-start; }
+
+.jc-company-logo {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), #9C8BFF);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; color: white; flex-shrink: 0;
+}
+
+.jc-title { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; margin-bottom: 2px; }
+.jc-company { font-size: 13px; font-weight: 500; color: var(--accent); }
+
+.save-btn {
+  width: 32px; height: 32px; border-radius: 8px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text3); cursor: pointer; transition: all var(--transition);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+.save-btn:hover { border-color: var(--danger); color: var(--danger); }
+.save-btn.saved { border-color: var(--danger); color: var(--danger); background: rgba(255,71,87,0.1); }
+.save-btn.saved svg { fill: var(--danger); }
+
+.jc-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.jc-location { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text2); }
+.jc-salary { font-size: 12px; font-weight: 600; color: var(--accent2); font-family: var(--mono); }
+
+.jc-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
+
+/* Source badges */
+.source-badge {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 5px;
+  font-size: 11px; font-weight: 600;
+}
+
+.source-linkedin      { background: rgba(10,102,194,0.15);  color: #4A9FE0; }
+.source-indeed        { background: rgba(0,114,200,0.12);   color: #5BA8E0; }
+.source-naukri        { background: rgba(255,100,0,0.12);   color: #FF8844; }
+.source-weworkremotely{ background: rgba(0,208,132,0.12);   color: #00D084; }
+.source-remotive      { background: rgba(255,184,0,0.12);   color: #FFB800; }
+.source-wellfound     { background: rgba(108,99,255,0.15);  color: #9C8BFF; }
+.source-glassdoor     { background: rgba(80,200,120,0.12);  color: #50C878; }
+.source-angellist     { background: rgba(255,71,87,0.12);   color: #FF6B7A; }
+
+/* Work type badges */
+.work-badge { padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+.badge-green { background: rgba(0,208,132,0.12); color: var(--accent2); }
+.badge-blue { background: rgba(108,99,255,0.12); color: #9C8BFF; }
+.badge-orange { background: rgba(255,184,0,0.12); color: var(--warn); }
+.badge-gray { background: var(--surface3); color: var(--text2); }
+
+.jc-posted { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text3); margin-left: auto; }
+
+.jc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.jc-tag { padding: 3px 9px; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; font-size: 11px; color: var(--text2); }
+
+.jc-footer { display: flex; align-items: center; justify-content: space-between; }
+
+/* Match Score */
+.match-score { display: flex; align-items: center; gap: 8px; }
+.match-ring { position: relative; width: 44px; height: 44px; }
+.match-svg { transform: rotate(-90deg); }
+.match-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--accent2); font-family: var(--mono); }
+.match-label { font-size: 11px; color: var(--text3); font-weight: 500; }
+
+.apply-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, var(--accent), #9C8BFF);
+  color: white; border: none; border-radius: var(--radius-sm);
+  padding: 9px 18px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition); font-family: var(--font);
+}
+
+.apply-btn:hover { box-shadow: 0 4px 16px rgba(108,99,255,0.4); transform: translateY(-1px); }
+
+/* ── RESUME PAGE ──────────────────────────────────────────────────────────── */
+.resume-page { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.section-label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; }
+
+/* Dropzone */
+.resume-dropzone {
+  border: 2px dashed var(--border2); border-radius: var(--radius);
+  padding: 40px 24px; text-align: center;
+  cursor: pointer; transition: all var(--transition);
+  background: var(--surface);
+}
+
+.resume-dropzone:hover, .resume-dropzone.dragging { border-color: var(--accent); background: rgba(108,99,255,0.05); }
+
+.dz-icon { color: var(--text3); margin-bottom: 12px; }
+.dz-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.dz-sub { font-size: 12px; color: var(--text3); }
+
+.dz-processing { display: flex; align-items: center; gap: 12px; justify-content: center; }
+.dz-spinner { width: 20px; height: 20px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Uploaded state */
+.resume-uploaded {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(0,208,132,0.08); border: 1px solid rgba(0,208,132,0.2);
+  border-radius: var(--radius); padding: 16px;
+}
+
+.ru-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(0,208,132,0.15); color: var(--accent2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ru-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.ru-size { font-size: 12px; color: var(--accent2); margin-top: 2px; }
+
+.ru-change {
+  margin-left: auto; display: flex; align-items: center; gap: 5px;
+  background: none; border: 1px solid var(--border2); color: var(--text2);
+  padding: 6px 12px; border-radius: var(--radius-sm); font-size: 12px;
+  cursor: pointer; transition: all var(--transition); font-family: var(--font); flex-shrink: 0;
+}
+
+.ru-change:hover { border-color: var(--text2); color: var(--text); }
+
+/* Info cards after upload */
+.resume-info-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+.ric {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px;
+  color: var(--accent);
+}
+
+.ric-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.ric-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+/* Tips */
+.resume-tips {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+
+.tip-row { display: flex; gap: 12px; margin-bottom: 14px; }
+.tip-row:last-child { margin-bottom: 0; }
+.tip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
+.tip-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.tip-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+/* ── ANALYTICS ────────────────────────────────────────────────────────────── */
+.analytics-panel { display: flex; flex-direction: column; gap: 20px; }
+
+.ap-header { display: flex; align-items: center; justify-content: space-between; }
+.ap-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+
+.export-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(0,208,132,0.1); border: 1px solid rgba(0,208,132,0.25);
+  color: var(--accent2); padding: 9px 18px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all var(--transition); font-family: var(--font);
+}
+
+.export-btn:hover { background: rgba(0,208,132,0.18); box-shadow: 0 4px 16px rgba(0,208,132,0.2); }
+
+/* KPI Grid */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+  position: relative; overflow: hidden;
+  transition: border-color var(--transition);
+}
+
+.kpi-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--kpi-color); opacity: 0.6;
+}
+
+.kpi-card:hover { border-color: var(--border2); }
+
+.kpi-icon { color: var(--kpi-color); margin-bottom: 10px; opacity: 0.8; }
+.kpi-val { font-size: 32px; font-weight: 800; color: var(--text); font-family: var(--mono); letter-spacing: -1px; display: block; margin-bottom: 4px; }
+.kpi-label { font-size: 12px; color: var(--text2); font-weight: 500; }
+
+/* Charts */
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+
+.chart-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 16px; }
+
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bar-row:last-child { margin-bottom: 0; }
+.bar-label { font-size: 12px; color: var(--text2); width: 70px; flex-shrink: 0; }
+.bar-track { flex: 1; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.6s ease; min-width: 4px; }
+.bar-count { font-size: 12px; color: var(--text); font-weight: 600; width: 20px; text-align: right; font-family: var(--mono); }
+
+/* Table */
+.table-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+
+.table-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+
+.table-count { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+
+.table-wrap { overflow-x: auto; }
+
+.app-table { width: 100%; border-collapse: collapse; }
+
+.app-table th {
+  padding: 10px 16px; text-align: left;
+  font-size: 11px; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+
+.app-table td {
+  padding: 12px 16px; font-size: 13px; color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-table tr:last-child td { border-bottom: none; }
+.app-table tr:hover td { background: var(--surface2); }
+
+.td-id { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+.td-company { font-weight: 600; }
+.td-date { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.td-score { font-family: var(--mono); font-weight: 700; color: var(--accent2); }
+
+/* Status badges */
+.status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600;
+}
+
+.status-applied { background: rgba(108,99,255,0.12); color: #9C8BFF; }
+.status-response { background: rgba(0,208,132,0.12); color: var(--accent2); }
+.status-interview { background: rgba(255,184,0,0.12); color: var(--warn); }
+.status-rejected { background: rgba(255,71,87,0.12); color: var(--danger); }
+
+/* ── MODAL ────────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  width: 100%; max-width: 560px;
+  box-shadow: var(--shadow-lg);
+  animation: modalUp 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  overflow: hidden;
+}
+
+@keyframes modalUp { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+.modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+}
+
+.modal-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.modal-sub { font-size: 13px; color: var(--text2); }
+
+.modal-close {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); cursor: pointer; transition: all var(--transition);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.modal-close:hover { background: var(--surface2); color: var(--text); }
+
+/* Modal Steps */
+.modal-steps {
+  display: flex; padding: 20px 24px 0;
+  gap: 4px; overflow-x: auto;
+}
+
+.ms-step {
+  display: flex; align-items: center; gap: 6px; flex: 1;
+  font-size: 11px; color: var(--text3);
+  padding-bottom: 14px; border-bottom: 2px solid var(--border);
+  transition: all var(--transition); white-space: nowrap;
+}
+
+.ms-step.done { color: var(--accent2); border-color: var(--accent2); }
+.ms-step.active { color: var(--accent); border-color: var(--accent); }
+
+.ms-dot {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: var(--surface3); display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--text3);
+}
+
+.ms-step.done .ms-dot { background: var(--accent2); color: white; }
+.ms-step.active .ms-dot { background: var(--accent); color: white; animation: pulse-dot 1s ease infinite; }
+
+@keyframes pulse-dot { 0%,100% { box-shadow: 0 0 0 0 rgba(108,99,255,0.4); } 50% { box-shadow: 0 0 0 6px rgba(108,99,255,0); } }
+
+.ms-label { font-size: 10px; font-weight: 600; }
+
+/* Modal progress */
+.modal-progress-track { height: 2px; background: var(--surface2); margin: 0 24px; }
+.modal-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; }
+
+/* Modal loading */
+.modal-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px; }
+.loading-spinner { width: 32px; height: 32px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.loading-text { font-size: 14px; color: var(--text2); }
+
+/* Modal scores */
+.modal-score-row { display: flex; gap: 12px; padding: 16px 24px 0; }
+.ms-score-card { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
+.msc-val { font-size: 24px; font-weight: 800; font-family: var(--mono); display: block; margin-bottom: 4px; }
+.msc-label { font-size: 11px; color: var(--text2); font-weight: 500; }
+
+/* Cover letter */
+.modal-cl { padding: 16px 24px 0; }
+.modal-cl-label { display: block; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 8px; }
+.modal-cl-area {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: var(--font); font-size: 13px; line-height: 1.6;
+  padding: 12px; resize: none; outline: none; transition: border-color var(--transition);
+}
+
+.modal-cl-area:focus { border-color: var(--accent); }
+
+/* Modal actions */
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 16px 24px 20px;
+}
+
+.btn-skip {
+  padding: 10px 20px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition); font-family: var(--font);
+}
+
+.btn-skip:hover { border-color: var(--danger); color: var(--danger); }
+
+.btn-submit {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 24px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent), #9C8BFF);
+  border: none; color: white; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition); font-family: var(--font);
+}
+
+.btn-submit:hover { box-shadow: 0 4px 20px rgba(108,99,255,0.4); transform: translateY(-1px); }
+
+/* ── EMPTY STATE ──────────────────────────────────────────────────────────── */
+.empty-state {
+  grid-column: 1/-1;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 60px; color: var(--text3);
+}
+
+.empty-state p { font-size: 14px; color: var(--text2); }
+.empty-state button {
+  background: none; border: 1px solid var(--border2); color: var(--accent);
+  padding: 8px 18px; border-radius: var(--radius-sm); font-size: 13px;
+  cursor: pointer; font-family: var(--font); transition: all var(--transition);
+}
+
+.empty-state button:hover { background: rgba(108,99,255,0.1); }
+
+/* ── AUTO APPLY SIDEBAR ───────────────────────────────────────────────────── */
+.auto-apply-sidebar {
+  margin: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aas-header { display: flex; flex-direction: column; gap: 8px; }
+
+.aas-label-row {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text2);
+}
+
+.aas-label { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+
+/* Toggle switch */
+.aas-toggle {
+  width: 36px; height: 20px; border-radius: 10px;
+  border: none; cursor: pointer; position: relative;
+  transition: background var(--transition); flex-shrink: 0;
+}
+
+.aas-toggle.off { background: var(--surface3); }
+.aas-toggle.on  { background: var(--accent); }
+
+.aas-knob {
+  position: absolute; top: 3px;
+  width: 14px; height: 14px; border-radius: 50%; background: white;
+  transition: left var(--transition); box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.aas-toggle.off .aas-knob { left: 3px; }
+.aas-toggle.on  .aas-knob { left: 19px; }
+
+/* Speed buttons */
+.aas-speed { display: flex; gap: 4px; }
+
+.speed-btn {
+  flex: 1; padding: 5px 4px; border-radius: 6px;
+  border: 1px solid var(--border2); background: transparent;
+  font-size: 10px; font-weight: 600; cursor: pointer;
+  font-family: var(--font); color: var(--text2);
+  transition: all var(--transition); white-space: nowrap;
+}
+
+.speed-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.speed-btn.active.speed-safe   { background: rgba(0,208,132,0.12); border-color: var(--accent2); color: var(--accent2); }
+.speed-btn.active.speed-normal { background: rgba(255,184,0,0.12); border-color: var(--warn); color: var(--warn); }
+.speed-btn.active.speed-fast   { background: rgba(108,99,255,0.12); border-color: var(--accent); color: var(--accent); }
+
+/* Start / Stop buttons */
+.aas-start {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 8px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), #9C8BFF);
+  border: none; color: white; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: var(--font); transition: all var(--transition);
+}
+
+.aas-start:hover { box-shadow: 0 4px 16px rgba(108,99,255,0.4); transform: translateY(-1px); }
+
+.aas-stop {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 8px; border-radius: 6px;
+  background: rgba(255,71,87,0.15); border: 1px solid rgba(255,71,87,0.3);
+  color: var(--danger); font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: var(--font); transition: all var(--transition);
+  animation: pulse-stop 1.5s ease infinite;
+}
+
+@keyframes pulse-stop {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,71,87,0.2); }
+  50% { box-shadow: 0 0 0 6px rgba(255,71,87,0); }
+}
+
+/* Activity log */
+.aas-log {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 120px; overflow-y: auto;
+}
+
+.aas-log-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 6px; border-radius: 5px; font-size: 11px;
+  background: var(--surface);
+}
+
+.aas-log-row.applying { border-left: 2px solid var(--warn); }
+.aas-log-row.done     { border-left: 2px solid var(--accent2); }
+
+.aas-log-icon { font-size: 10px; width: 12px; flex-shrink: 0; }
+.aas-log-row.applying .aas-log-icon { color: var(--warn); animation: blink 1s ease infinite; }
+.aas-log-row.done .aas-log-icon { color: var(--accent2); }
+
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.aas-log-text { flex: 1; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aas-log-time { color: var(--text3); font-family: var(--mono); font-size: 10px; flex-shrink: 0; }
+
+/* ── AUTO APPLY SIDEBAR ───────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-row { grid-template-columns: 1fr; }
+  .resume-page { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 20px; }
+  .jobs-grid { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .page-header { flex-direction: column; }
+}
